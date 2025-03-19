@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Inversión Inmobiliaria</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.5.0/math.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #0078d7;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #0078d7;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .stat-card.primary {
+            border-top: 4px solid #0078d7;
+        }
+        .stat-card.success {
+            border-top: 4px solid #107c10;
+        }
+        .stat-card.warning {
+            border-top: 4px solid #ff8c00;
+        }
+        .stat-card.info {
+            border-top: 4px solid #00b7c3;
+        }
+        .grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .grid-table th, .grid-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .grid-table th {
+            background-color: #f0f0f0;
+            font-weight: 600;
+        }
+        .grid-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .azure-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dashboard de Inversión Inmobiliaria</h1>
+            <p>Visualiza el crecimiento de tu portafolio inmobiliario a lo largo del tiempo</p>
+        </div>
+        
+        <div class="panel">
+            <h2>Parámetros de Simulación</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="propiedades-iniciales">Propiedades Iniciales Pagadas:</label>
+                    <input type="number" id="propiedades-iniciales" min="0" value="2" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="pago-mensual">Pago Mensual Inicial ($):</label>
+                    <input type="number" id="pago-mensual" min="1000" value="25000" step="1000">
+                </div>
+                <div class="control-group">
+                    <label for="inflacion-anual">Inflación Anual (%):</label>
+                    <input type="number" id="inflacion-anual" min="0" value="4" step="0.1" max="20">
+                </div>
+                <div class="control-group">
+                    <label for="apreciacion-anual">Apreciación Anual Rentas (%):</label>
+                    <input type="number" id="apreciacion-anual" min="0" value="5" step="0.1" max="20">
+                </div>
+                <div class="control-group">
+                    <label for="anos-simulacion">Años de Simulación:</label>
+                    <input type="number" id="anos-simulacion" min="1" value="30" step="1" max="50">
+                </div>
+                <div class="control-group">
+                    <label for="duracion-credito">Duración de Crédito (años):</label>
+                    <input type="number" id="duracion-credito" min="1" value="20" step="1" max="30">
+                </div>
+            </div>
+            <button id="simular-btn">Simular Crecimiento</button>
+        </div>
+        
+        <div class="panel">
+            <h2>Crecimiento del Portafolio</h2>
+            <div class="chart-container">
+                <canvas id="growth-chart"></canvas>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-card primary">
+                <div class="stat-label">Propiedades Totales (Año Final)</div>
+                <div class="stat-value" id="total-properties">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-label">Propiedades Pagadas (Año Final)</div>
+                <div class="stat-value" id="paid-properties">0</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-label">Ingresos Mensuales (Año Final)</div>
+                <div class="stat-value" id="monthly-income">$0</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-label">Valor Total del Portafolio</div>
+                <div class="stat-value" id="portfolio-value">$0</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Detalle por Año</h2>
+            <div style="overflow-x: auto;">
+                <table class="grid-table" id="results-table">
+                    <thead>
+                        <tr>
+                            <th>Año</th>
+                            <th>Propiedades Totales</th>
+                            <th>Propiedades Pagadas</th>
+                            <th>Pago Mensual ($)</th>
+                            <th>Renta Mensual ($)</th>
+                            <th>Ingresos Mensuales ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Datos dinámicos -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="azure-info">
+            <p>Dashboard para despliegue en Microsoft Azure | © 2025</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Referencia al botón y configuración del evento
+            const simularBtn = document.getElementById('simular-btn');
+            let growthChart = null;
+            
+            simularBtn.addEventListener('click', simularCrecimiento);
+            
+            // Ejecutar simulación inicial
+            simularCrecimiento();
+            
+            function simularCrecimiento() {
+                // Obtener valores de entrada
+                const propiedadesIniciales = parseInt(document.getElementById('propiedades-iniciales').value) || 0;
+                const pagoMensualInicial = parseFloat(document.getElementById('pago-mensual').value) || 25000;
+                const inflacionAnual = parseFloat(document.getElementById('inflacion-anual').value) || 0;
+                const apreciacionAnual = parseFloat(document.getElementById('apreciacion-anual').value) || 0;
+                const anosSimulacion = parseInt(document.getElementById('anos-simulacion').value) || 30;
+                const duracionCreditoAnos = parseInt(document.getElementById('duracion-credito').value) || 20;
+                
+                // Convertir porcentajes a decimales
+                const inflacionMensual = Math.pow(1 + inflacionAnual / 100, 1/12) - 1;
+                const apreciacionMensual = Math.pow(1 + apreciacionAnual / 100, 1/12) - 1;
+                
+                // Parámetros iniciales
+                const duracionCreditoMeses = duracionCreditoAnos * 12;
+                let propiedadesAdquiridas = propiedadesIniciales;
+                let propiedadesPagadas = propiedadesIniciales;
+                let pagoMensual = pagoMensualInicial;
+                let rentaMensual = pagoMensualInicial;
+                let ingresosMensuales = propiedadesPagadas * rentaMensual;
+                
+                // Array para propiedades en pago
+                let propiedadesEnPago = [];
+                
+                // Datos para gráfico y tabla
+                const labels = [];
+                const totalesData = [];
+                const pagadasData = [];
+                const ingresosData = [];
+                const rentaData = [];
+                const pagoData = [];
+                const detalleAnual = [];
+                
+                // Simulación mes a mes
+                for (let mes = 0; mes <= anosSimulacion * 12; mes++) {
+                    // Actualizar valores con inflación y apreciación
+                    if (mes > 0) {
+                        pagoMensual *= (1 + inflacionMensual);
+                        rentaMensual *= (1 + apreciacionMensual);
+                    }
+                    
+                    // Actualizar ingresos mensuales (propiedades pagadas * renta mensual)
+                    ingresosMensuales = propiedadesPagadas * rentaMensual;
+                    
+                    // Pagar propiedades existentes
+                    for (let i = propiedadesEnPago.length - 1; i >= 0; i--) {
+                        propiedadesEnPago[i].mesesRestantes -= 1;
+                        if (propiedadesEnPago[i].mesesRestantes <= 0) {
+                            // Propiedad pagada
+                            propiedadesPagadas += 1;
+                            propiedadesEnPago.splice(i, 1);
+                        }
+                    }
+                    
+                    // Calcular flujo de caja disponible
+                    const pagosTotales = propiedadesEnPago.reduce((sum, prop) => sum + prop.pagoMensual, 0);
+                    const flujoCaja = ingresosMensuales - pagosTotales;
+                    
+                    // Si hay suficiente flujo positivo, adquirimos nueva propiedad
+                    if (flujoCaja >= pagoMensual) {
+                        // Determinar cuánto podemos pagar mensualmente
+                        const nuevoPagoMensual = pagoMensual + Math.max(0, flujoCaja - pagoMensual);
+                        
+                        // Calcular cuánto tiempo tomará pagar
+                        const montoTotal = pagoMensual * duracionCreditoMeses;
+                        const mesesParaPagar = Math.ceil(montoTotal / nuevoPagoMensual);
+                        
+                        // Agregar nueva propiedad
+                        propiedadesEnPago.push({
+                            mesesRestantes: mesesParaPagar,
+                            pagoMensual: nuevoPagoMensual
+                        });
+                        
+                        propiedadesAdquiridas += 1;
+                    }
+                    
+                    // Guardar datos anuales
+                    if (mes % 12 === 0) {
+                        const ano = mes / 12;
+                        labels.push(`Año ${ano}`);
+                        totalesData.push(propiedadesAdquiridas);
+                        pagadasData.push(propiedadesPagadas);
+                        ingresosData.push(ingresosMensuales);
+                        rentaData.push(rentaMensual);
+                        pagoData.push(pagoMensual);
+                        
+                        detalleAnual.push({
+                            ano,
+                            propiedadesTotales: propiedadesAdquiridas,
+                            propiedadesPagadas,
+                            pagoMensual,
+                            rentaMensual,
+                            ingresosMensuales
+                        });
+                    }
+                }
+                
+                // Actualizar estadísticas finales
+                document.getElementById('total-properties').textContent = propiedadesAdquiridas;
+                document.getElementById('paid-properties').textContent = propiedadesPagadas;
+                document.getElementById('monthly-income').textContent = formatCurrency(ingresosMensuales);
+                
+                // Estimar valor del portafolio (valor aproximado: renta mensual * 12 / 0.05)
+                // Usando la regla del 5% de capitalización
+                const valorPortafolio = (rentaMensual * propiedadesPagadas * 12) / 0.05;
+                document.getElementById('portfolio-value').textContent = formatCurrency(valorPortafolio);
+                
+                // Actualizar tabla de resultados
+                actualizarTabla(detalleAnual);
+                
+                // Actualizar gráfico
+                actualizarGrafico(labels, totalesData, pagadasData, ingresosData);
+            }
+            
+            function actualizarTabla(datos) {
+                const tbody = document.getElementById('results-body');
+                tbody.innerHTML = '';
+                
+                datos.forEach(fila => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fila.ano}</td>
+                        <td>${fila.propiedadesTotales}</td>
+                        <td>${fila.propiedadesPagadas}</td>
+                        <td>${formatCurrency(fila.pagoMensual)}</td>
+                        <td>${formatCurrency(fila.rentaMensual)}</td>
+                        <td>${formatCurrency(fila.ingresosMensuales)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            function actualizarGrafico(labels, totalesData, pagadasData, ingresosData) {
+                const ctx = document.getElementById('growth-chart').getContext('2d');
+                
+                // Destruir gráfico existente si hay uno
+                if (growthChart) {
+                    growthChart.destroy();
+                }
+                
+                // Calcular máximo para el eje Y secundario (ingresos)
+                const maxIngresos = Math.max(...ingresosData);
+                const maxPropiedades = Math.max(...totalesData);
+                
+                growthChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Propiedades Totales',
+                            data: totalesData,
+                            borderColor: '#0078d7',
+                            backgroundColor: 'rgba(0, 120, 215, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Propiedades Pagadas',
+                            data: pagadasData,
+                            borderColor: '#107c10',
+                            backgroundColor: 'rgba(16, 124, 16, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Ingresos Mensuales ($)',
+                            data: ingresosData,
+                            borderColor: '#ff8c00',
+                            backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Número de Propiedades'
+                                },
+                                suggestedMin: 0,
+                                suggestedMax: maxPropiedades * 1.1
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Ingresos Mensuales ($)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        if (value >= 1000000) {
+                                            return '$' + (value / 1000000).toFixed(1) + 'M';
+                                        } else if (value >= 1000) {
+                                            return '$' + (value / 1000).toFixed(0) + 'k';
+                                        }
+                                        return '$' + value;
+                                    }
+                                },
+                                suggestedMin: 0,
+                                suggestedMax: maxIngresos * 1.1
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.dataset.yAxisID === 'y1') {
+                                            label += formatCurrency(context.parsed.y);
+                                        } else {
+                                            label += context.parsed.y;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function formatCurrency(value) {
+                return new Intl.NumberFormat('es-MX', {
+                    style: 'currency',
+                    currency: 'MXN',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(value);
+            }
+        });
+    </script>
+</body>
+</html>
